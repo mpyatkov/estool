@@ -108,14 +108,14 @@ calc_overlap_v3 <- function(fg,bg,bioreg.df,prepare_output_overlaps) {
   }
 }
 
-test <- "01_Male_Chromatin_States"
-test <- sort(bio_group_dict$bio_group %>% unique())
+#categories <- "01_Male_Chromatin_States"
+categories <- sort(bio_group_dict$bio_group %>% unique())
 
 #system.time(zz1 <- map_dfr(sort(bio_group_dict$bio_group %>% unique()), \(d){
 system.time(
   
   ## loop over all bioreg categories
-  es_scores <- map_dfr(test, \(category){
+  es_scores <- map_dfr(categories, \(category){
     
     print(category)
     
@@ -193,7 +193,7 @@ make_barplot <- function(df){
   title <- str_glue("delta-DHS Enrichment for \n",
                     "{category}\n",
                     "{bg_name} background\n",
-                    "p.value <= 1e-100 = '***'; 1e-10 = '**'; 0.001 = '*'")
+                    "p.value <= 1e-100 = ***; 1e-10 = **; 0.001 = *")
   
   barplot <- ggplot(data=test_df, aes(x=factor(ix), y=ES, fill=fg.name.fig)) + 
     geom_bar(stat="identity", position=position_dodge(), colour="black") + 
@@ -207,7 +207,7 @@ make_barplot <- function(df){
           legend.justification = c(1, 1),
           plot.title = element_text(size = 12))
 
-  names_table <- ggtexttable(test_df %>% select(index = ix, bioreg = bioreg.fig) %>% distinct(), rows = NULL)
+  names_table <- ggtexttable(test_df %>% select(index = ix, Bio.region = bioreg.fig) %>% distinct(), rows = NULL)
   
   cowplot::plot_grid(barplot+names_table+plot_layout(ncol = 2))
 }
@@ -223,20 +223,25 @@ options(scipen=0)
 zz1 <- es_scores %>% 
   mutate(fg.pct.overlap = round(100.*fg.overlap/fg.total,2),
          bg.pct.overlap = round(100.*bg.overlap/bg.total,2),
-         fg.pct.overlap = str_glue("{fg.overlap} ({fg.pct.overlap}%)"),
-         bg.pct.overlap = str_glue("{bg.overlap} ({bg.pct.overlap}%)"),
+        #fg.pct.overlap = str_glue("{fg.overlap} ({fg.pct.overlap}%)"),
+        #bg.pct.overlap = str_glue("{bg.overlap} ({bg.pct.overlap}%)"),
         #bg.name = str_glue("{bg.name} background"),
         #fg.name = str_glue("{fg.name} foreground"),
         #p.value = format(p.value, digits = 3, scientific = T, trim = T),
         p.value = formattable::comma(p.value, format = "e", width = 2, digits = 2),
         ES = ifelse(is.infinite(ES), 0, round(ES,2))) %>%   
-  select(Category = category, Bioreg = bioreg, ES, p.value, 
+  select(Bio.region_category = category, 
+         Bio.region = bioreg, 
+         `Enrichment_Score (ES)` = ES, 
+         Fishers_Exact_test_pvalue = p.value, 
          Foreground_filename = fg.name, 
          Background_filename = bg.name, 
          Foreground_total_sites = fg.total, 
          Background_total_sites = bg.total, 
-         Foreground_overlap_sites = fg.pct.overlap, 
-         Background_overlap_sites = bg.pct.overlap) 
+         Foreground_overlap_sites = fg.overlap,
+         Background_overlap_sites = bg.overlap,
+         Foreground_overlap_sites_percent = fg.pct.overlap, 
+         Background_overlap_sites_percent = bg.pct.overlap) 
 
 openxlsx2::write_xlsx(zz1, file = str_glue("{OUTPUTDIR}/overlap_summary.xlsx"), col_names = TRUE)
 
