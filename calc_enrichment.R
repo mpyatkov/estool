@@ -5,11 +5,16 @@ library(tidyr)
 library(stringr)
 library(purrr)
 library(readxl)
-library(writexl)
 library(broom)
 
-remotes::install_cran("plyranges", upgrade = "never")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("plyranges")
 library(plyranges)
+
+remotes::install_cran("writexl", upgrade = "never")
+library(writexl)
 
 remotes::install_cran("MAnorm2", upgrade = "never")
 library(MAnorm2)
@@ -19,6 +24,9 @@ library(gtools)
 
 remotes::install_cran("openxlsx2", upgrade = "never")
 library(openxlsx2)
+
+remotes::install_cran("formattable", upgrade = "never")
+library(formattable)
 
 library(ggpubr)
 library(ggplot2)
