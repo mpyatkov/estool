@@ -4,11 +4,15 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(purrr)
-library(MAnorm2)
-library(plyranges)
 library(readxl)
 library(writexl)
 library(broom)
+
+remotes::install_cran("plyranges", upgrade = "never")
+library(plyranges)
+
+remotes::install_cran("MAnorm2", upgrade = "never")
+library(MAnorm2)
 
 remotes::install_cran("gtools", upgrade = "never")
 library(gtools)
