@@ -1,4 +1,35 @@
 #!/usr/bin/env Rscript
+
+## suppress warnings
+options(warn=-1)
+
+library <- function (...) {
+   packages <- as.character(match.call(expand.dots = FALSE)[[2]])
+   suppressWarnings(suppressMessages(lapply(packages, base::library, character.only = TRUE)))
+   return(invisible())
+}
+
+## uncomment this if you are not going to use singularity image
+## it should install the packages locally
+
+# cran_packages <- c("writexl", "gtools", "openxlsx2", "formattable")
+# for (pkg in cran_packages) {
+#   if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
+#     install.packages(pkg)
+#     library(pkg)
+#   }
+# }
+
+# if (!require("plyranges", character.only = TRUE, quietly = TRUE)) {
+#     if (!require("BiocManager", quietly = TRUE))
+
+#         install.packages("BiocManager")
+
+#     BiocManager::install("plyranges", update = FALSE)
+#     library(plyranges)
+#   }
+
+cat("Init libraries...\n")
 library(readr)
 library(dplyr)
 library(tidyr)
@@ -6,34 +37,15 @@ library(stringr)
 library(purrr)
 library(readxl)
 library(broom)
-
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("plyranges")
-library(plyranges)
-
-remotes::install_cran("writexl", upgrade = "never")
-library(writexl)
-
-remotes::install_cran("MAnorm2", upgrade = "never")
-library(MAnorm2)
-
-remotes::install_cran("gtools", upgrade = "never")
-library(gtools)
-
-remotes::install_cran("openxlsx2", upgrade = "never")
-library(openxlsx2)
-
-remotes::install_cran("formattable", upgrade = "never")
-library(formattable)
-
 library(ggpubr)
 library(ggplot2)
 library(gridExtra)
 library(patchwork)
 library(cowplot)
-
+library(gtools) ## for mixedsort
+library(plyranges)
+library(formattable)
+library(openxlsx2)
 
 OUTPUTDIR <- "result"
 NEED_OUTPUT_BOOL <- T
@@ -41,14 +53,15 @@ NEED_OUTPUT_BOOL <- T
 ## create output directory
 create_directory <- function(dirname){
   if (dir.exists(dirname)){
+    print(str_glue("Cleanup previous results..."))
     unlink(dirname, recursive=TRUE)  
   }
   dir.create(dirname, showWarnings = TRUE, recursive = FALSE, mode = "0777")
   return(dirname)
 }
 
-
-create_directory(OUTPUTDIR)
+outd <- create_directory(OUTPUTDIR)
+print(str_glue("The output '{outd}' directory has been created"))
 
 get_fisher <- function(x1,y1,x2,y2){
   mx <- matrix(c(x1,y1,x2,y2), nr = 2)
@@ -61,7 +74,7 @@ bio_group_dict <- list.files(path = "./bio_regions/", pattern = "bed", full.name
            filename = f %>% basename())
   })
 
-fg_list <- list.files(path = "./diffexp", pattern = "bed", full.names = T) %>% 
+fg_list <- list.files(path = "./foreground", pattern = "bed", full.names = T) %>% 
   map(\(f){
     filename <- basename(f)
     read_tsv(file = f, col_names = F, show_col_types = FALSE) %>% 
@@ -130,7 +143,7 @@ system.time(
   ## loop over all bioreg categories
   es_scores <- map_dfr(categories, \(category){
     
-    print(category)
+    print(str_glue("Start processing '{category}' bio regions"))
     
     ## read bio-regions
     bioreg_list <- list.files(path = str_glue("./bio_regions/{category}/"), pattern = "bed", full.names = T) %>% 
@@ -188,7 +201,7 @@ make_barplot <- function(df){
   
   bg_name <- df$bg.name.fig %>% unique()
 
-  test_df <- df %>% left_join(., order_df) %>% 
+  test_df <- df %>% left_join(., order_df, join_by(bioreg.fig)) %>% 
     mutate(
       p.value = case_when(is.infinite(ES) ~ 0,
                           TRUE ~ p.value),
@@ -257,7 +270,7 @@ zz1 <- es_scores %>%
          Background_overlap_sites_percent = bg.pct.overlap) 
 
 openxlsx2::write_xlsx(zz1, file = str_glue("{OUTPUTDIR}/overlap_summary.xlsx"), col_names = TRUE)
-
+print("Please check the 'result' directory")
 
 ## TODO: stoped here because thought how to aggregate data if we have multiple backgrounds and foregrounds
 #pivot_wider(names_from = c("fg.name"), values_from = c("ES","p.value","fg.pct.overlap")) %>% 
