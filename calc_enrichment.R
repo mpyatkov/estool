@@ -224,7 +224,8 @@ make_barplot <- function(df){
   barplot <- ggplot(data=test_df, aes(x=factor(ix), y=ES, fill=fg.name.fig)) + 
     geom_bar(stat="identity", position=position_dodge(), colour="black") + 
     geom_hline(yintercept=1, colour="Red") +
-    scale_y_continuous(limits=c(0, legend_ylim), breaks=seq(0, legend_ylim, 1.0)) +
+    #scale_y_continuous(limits=c(0, legend_ylim), breaks=seq(0, legend_ylim, 1.0)) +
+    scale_y_continuous(breaks = scales::pretty_breaks(20), limits = c(0, legend_ylim))+
     scale_fill_discrete(name = "foreground")+
     ggtitle(title) +
     geom_text(aes(label=star,y=ES),position = position_dodge(width=0.9),size=7,hjust=-.3, vjust=0.75, angle=90)+
