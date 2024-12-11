@@ -259,6 +259,7 @@ zz1 <- es_scores %>%
         ES = ifelse(is.infinite(ES), 0, round(ES,2))) %>%   
   select(Bio.region_category = category, 
          Bio.region = bioreg, 
+         Bio.region_total_sites = bioreg.total,
          `Enrichment_Score (ES)` = ES, 
          Fishers_Exact_test_pvalue = p.value, 
          Foreground_filename = fg.name, 
