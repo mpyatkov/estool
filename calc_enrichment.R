@@ -46,6 +46,7 @@ library(gtools) ## for mixedsort
 library(plyranges)
 library(formattable)
 library(openxlsx2)
+library(RColorBrewer)
 
 OUTPUTDIR <- "result"
 NEED_OUTPUT_BOOL <- T
@@ -169,9 +170,14 @@ system.time(
     ## SIDE EFFECT: write down all overlaps to individual files for each category
     if (NEED_OUTPUT_BOOL){
       ## aggregate all dump tables from one category to one
-      map_dfr(tmp, \(t){t$dump}) %>% 
+      agg_dump <- map_dfr(tmp, \(t){t$dump})
+      if (nrow(agg_dump) > 990000) {
+        print(str_glue("Too many rows for category table '{category}'. Skipping creating overlap files for this category"))
+      } else {
         # write_csv(file = str_glue("{OUTPUTDIR}/overlaps_{category}.csv.gz"), col_names = T)
-        openxlsx2::write_xlsx(file = str_glue("{OUTPUTDIR}/overlaps_{category}.xlsx"), col_names = TRUE)
+        openxlsx2::write_xlsx(agg_dump, file = str_glue("{OUTPUTDIR}/overlaps_{category}.xlsx"), col_names = TRUE)
+        
+      }
     }
     
     ## for each row of data.frame in summary calculate fisher test
@@ -201,39 +207,48 @@ make_barplot <- function(df){
   
   bg_name <- df$bg.name.fig %>% unique()
 
-  test_df <- df %>% left_join(., order_df, join_by(bioreg.fig)) %>% 
-    mutate(
-      p.value = case_when(is.infinite(ES) ~ 0,
-                          TRUE ~ p.value),
-      ES = case_when(is.infinite(ES) ~ 0,
-                     TRUE ~ ES),
-      star = case_when(p.value <=1e-100 & ES > 0 ~ "***",
-                       p.value <= 1e-10 & ES > 0 ~ "**",
-                       p.value <= 0.001 & ES > 0 ~ "*",
-                       TRUE ~ ""))
+  ## Max ES
+  maxes <- max(df$ES[is.finite(df$ES)])
   
+  test_df <- df %>%
+    left_join(., order_df, join_by(bioreg.fig)) %>%
+    mutate(star = case_when(p.value <=1e-100 ~ "***",
+                            p.value <= 1e-10 ~ "**",
+                            p.value <= 0.001 ~ "*",
+                            TRUE ~ "")) %>% 
+    mutate(fill_color= ifelse(is.infinite(ES),"Enrichment score = Inf", as.character(fg.name.fig))) %>% 
+    mutate(ES = ifelse(is.infinite(ES), maxes, ES))
   
-  legend_ylim <- max(test_df$ES) + 5
+  ## colors
+  num_colors <- length(unique(test_df$fg.name.fig))
+  brewer_colors <- brewer.pal(n = max(3, num_colors), name = "Set2")[1:num_colors]
+
+  custom_colors <- c("gray", brewer_colors)
+  names(custom_colors) <- c("Enrichment score = Inf", unique(test_df$fg.name.fig))
   
+
+  legend_ylim <- maxes+maxes*0.15
 
   title <- str_glue("delta-DHS Enrichment for \n",
                     "{category}\n",
                     "{bg_name} background\n",
                     "p.value <= 1e-100 = ***; 1e-10 = **; 0.001 = *")
   
-  barplot <- ggplot(data=test_df, aes(x=factor(ix), y=ES, fill=fg.name.fig)) + 
-    geom_bar(stat="identity", position=position_dodge(), colour="black") + 
+  barplot <- ggplot(data=test_df, aes(x=factor(ix), y=ES, fill=fill_color)) +
+    geom_bar(stat="identity", position=position_dodge2(), colour="black") +
     geom_hline(yintercept=1, colour="Red") +
-    #scale_y_continuous(limits=c(0, legend_ylim), breaks=seq(0, legend_ylim, 1.0)) +
     scale_y_continuous(breaks = scales::pretty_breaks(20), limits = c(0, legend_ylim))+
-    scale_fill_discrete(name = "foreground")+
+    # scale_fill_discrete(name = "foreground")+
+    scale_fill_manual(
+      name = "Foreground",
+      values = custom_colors) +
     ggtitle(title) +
     geom_text(aes(label=star,y=ES),position = position_dodge(width=0.9),size=7,hjust=-.3, vjust=0.75, angle=90)+
-    ylab("Enrichment Score") + xlab("Biological Sites") + 
-    theme(legend.position = c(1, 1), 
+    ylab("Enrichment Score") + xlab("Biological Sites") +
+    theme(legend.position = c(1.9, 1.05),
           legend.justification = c(1, 1),
           plot.title = element_text(size = 12))
-
+  
   names_table <- ggtexttable(test_df %>% select(index = ix, Bio.region = bioreg.fig) %>% distinct(), rows = NULL)
   
   cowplot::plot_grid(barplot+names_table+plot_layout(ncol = 2))
@@ -244,19 +259,14 @@ es_score_list %>%
   marrangeGrob(nrow = 1, ncol = 1) %>%
   ggsave(filename = str_glue("{OUTPUTDIR}/enrichment_barplots.pdf"), width = 15, height = 11.29)
   
-
 ### OUTPUT FINAL TABLE
 options(scipen=0)
 zz1 <- es_scores %>% 
   mutate(fg.pct.overlap = round(100.*fg.overlap/fg.total,2),
          bg.pct.overlap = round(100.*bg.overlap/bg.total,2),
-        #fg.pct.overlap = str_glue("{fg.overlap} ({fg.pct.overlap}%)"),
-        #bg.pct.overlap = str_glue("{bg.overlap} ({bg.pct.overlap}%)"),
-        #bg.name = str_glue("{bg.name} background"),
-        #fg.name = str_glue("{fg.name} foreground"),
         #p.value = format(p.value, digits = 3, scientific = T, trim = T),
-        p.value = formattable::comma(p.value, format = "e", width = 2, digits = 2),
-        ES = ifelse(is.infinite(ES), 0, round(ES,2))) %>%   
+        p.value = formattable::comma(p.value, format = "e", width = 2, digits = 2), 
+        ES = ifelse(is.infinite(ES), 1e300, round(ES,2))) %>%   
   select(Bio.region_category = category, 
          Bio.region = bioreg, 
          Bio.region_total_sites = bioreg.total,
