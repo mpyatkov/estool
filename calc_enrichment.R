@@ -69,7 +69,7 @@ get_fisher <- function(x1,y1,x2,y2){
   fisher.test(mx) %>% tidy() %>% select(ES=estimate, p.value)
 }
 
-bio_group_dict <- list.files(path = "./bio_regions/", pattern = "bed", full.names = T, recursive = T) %>% 
+bio_group_dict <- list.files(path = "./bio_regions/", pattern = "\\.bed$", full.names = T, recursive = T) %>% 
   map_dfr(\(f){
     tibble(bio_group = f %>% dirname() %>% basename(),
            filename = f %>% basename())
