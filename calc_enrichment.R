@@ -217,7 +217,9 @@ make_barplot <- function(df){
                             p.value <= 0.001 ~ "*",
                             TRUE ~ "")) %>% 
     mutate(fill_color= ifelse(is.infinite(ES),"Enrichment score = Inf", as.character(fg.name.fig))) %>% 
-    mutate(ES = ifelse(is.infinite(ES), maxes, ES))
+    mutate(ES = case_when(is.infinite(ES) & p.value<=0.001 ~ maxes,
+                          is.infinite(ES) ~ 0,
+                          .default = ES))
   
   ## colors
   num_colors <- length(unique(test_df$fg.name.fig))
@@ -243,7 +245,7 @@ make_barplot <- function(df){
       name = "Foreground",
       values = custom_colors) +
     ggtitle(title) +
-    geom_text(aes(label=star,y=ES),position = position_dodge(width=0.9),size=7,hjust=-.3, vjust=0.75, angle=90)+
+    geom_text(aes(label=star,y=ES),position = position_dodge2(width=0.9),size=7,hjust=-.3, vjust=0.75, angle=90)+
     ylab("Enrichment Score") + xlab("Biological Sites") +
     theme(legend.position = c(1.9, 1.05),
           legend.justification = c(1, 1),
@@ -266,7 +268,11 @@ zz1 <- es_scores %>%
          bg.pct.overlap = round(100.*bg.overlap/bg.total,2),
         #p.value = format(p.value, digits = 3, scientific = T, trim = T),
         p.value = formattable::comma(p.value, format = "e", width = 2, digits = 2), 
-        ES = ifelse(is.infinite(ES), 1e300, round(ES,2))) %>%   
+        #ES = ifelse(is.infinite(ES), 1e300, round(ES,2))
+        ES = case_when(is.infinite(ES) & p.value<=0.001 ~ 1e300,
+                       is.infinite(ES) ~ 0,
+                       .default = round(ES, 2))
+        ) %>%   
   select(Bio.region_category = category, 
          Bio.region = bioreg, 
          Bio.region_total_sites = bioreg.total,
