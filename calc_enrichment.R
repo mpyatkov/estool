@@ -80,6 +80,8 @@ fg_list <- list.files(path = "./foreground", pattern = "bed", full.names = T) %>
     filename <- basename(f)
     read_tsv(file = f, col_names = F, show_col_types = FALSE) %>% 
       select(seqnames = 1, start = 2, end = 3) %>% 
+      distinct(seqnames, start, end) %>% 
+      filter(end - start > 1) %>% 
       mutate(fgbg_name = filename,
              total = n(),
              type = "foreground")
@@ -91,6 +93,8 @@ bg_list <- list.files(path = "./background/", pattern = "bed", full.names = T) %
     filename <- basename(f)
     read_tsv(file = f, col_names = F, show_col_types = FALSE) %>% 
       select(seqnames = 1, start = 2, end = 3) %>% 
+      distinct(seqnames, start, end) %>% 
+      filter(end - start > 1) %>% 
       mutate(fgbg_name = filename,
              total = n(),
              type = "background")
@@ -103,13 +107,13 @@ calc_overlap_v3 <- function(fg,bg,bioreg.df,prepare_output_overlaps) {
   
   fg_overlap <- find_overlaps(fg %>% as_granges() %>% arrange(seqnames, start, end), 
                               sorted_bioreg, 
-                              minoverlap = 2) %>% 
+                              minoverlap = 1) %>% 
     as_tibble() %>% 
     distinct()
   
   bg_overlap <- find_overlaps(bg %>% arrange(seqnames, start, end) %>% as_granges(), 
                               sorted_bioreg, 
-                              minoverlap = 2) %>% 
+                              minoverlap = 1) %>% 
     as_tibble() %>% 
     distinct()
   
@@ -153,6 +157,8 @@ system.time(
         filename <- basename(f)
         read_tsv(file = f, col_names = F, show_col_types = FALSE) %>% 
           select(seqnames = 1, start = 2, end = 3) %>% 
+          distinct(seqnames, start, end) %>% 
+          filter(end - start > 1) %>% 
           mutate(bioreg_name = filename)
       })
     
