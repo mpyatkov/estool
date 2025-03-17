@@ -237,7 +237,8 @@ make_barplot <- function(df){
     mutate(fill_color= ifelse(is.infinite(ES),"Enrichment score = Inf", as.character(fg.name.fig))) %>% 
     mutate(ES = case_when(is.infinite(ES) & p.value<=0.001 ~ maxes,
                           is.infinite(ES) ~ 0,
-                          .default = ES))
+                          .default = ES),
+           fg.pct.overlap = round(100.*fg.overlap/fg.total,2))
   
   ## colors
   num_colors <- length(unique(test_df$fg.name.fig))
@@ -254,19 +255,18 @@ make_barplot <- function(df){
   custom_colors <- c("gray", brewer_colors)
   names(custom_colors) <- c("Enrichment score = Inf", unique(test_df$fg.name.fig))
   
-
+  # max ylim for ES plot
   legend_ylim <- maxes+maxes*0.15
-
+ 
   title <- str_glue("delta-DHS Enrichment for \n",
                     "{category}\n",
                     "{bg_name} background\n",
                     "p.value <= 1e-100 = ***; 1e-10 = **; 0.001 = *")
   
-  barplot <- ggplot(data=test_df, aes(x=factor(ix), y=ES, fill=fill_color)) +
+  es.barplot <- ggplot(data=test_df, aes(x=factor(ix), y=ES, fill=fill_color)) +
     geom_bar(stat="identity", position=position_dodge2(), colour="black") +
     geom_hline(yintercept=1, colour="Red") +
     scale_y_continuous(breaks = scales::pretty_breaks(20), limits = c(0, legend_ylim))+
-    # scale_fill_discrete(name = "foreground")+
     scale_fill_manual(
       name = "Foreground",
       values = custom_colors) +
@@ -277,13 +277,33 @@ make_barplot <- function(df){
           legend.justification = c(1, 1),
           plot.title = element_text(size = 12))
   
+  ## same barplot as before but y-axis is fg.pct.overlap not ES
+  legend_ylim_pct <- max(test_df$fg.pct.overlap[is.finite(test_df$fg.pct.overlap)])
+  legend_ylim_pct <- legend_ylim_pct + legend_ylim_pct*0.15
+  
+  pct.overlap.barplot <- ggplot(data=test_df, aes(x=factor(ix), y=fg.pct.overlap, fill=fill_color)) +
+    geom_bar(stat="identity", position=position_dodge2(), colour="black") +
+    geom_hline(yintercept=1, colour="Red") +
+    scale_y_continuous(breaks = scales::pretty_breaks(20), limits = c(0, legend_ylim_pct))+
+    scale_fill_manual(
+      name = "Foreground",
+      values = custom_colors) +
+    ggtitle(title) +
+    geom_text(aes(label=star,y=fg.pct.overlap),position = position_dodge2(width=0.9),size=7,hjust=-.3, vjust=0.75, angle=90)+
+    ylab("Foreground Overlap as Percentage of Foreground Total") + xlab("Biological Sites") +
+    theme(legend.position = c(1.9, 1.05),
+          legend.justification = c(1, 1),
+          plot.title = element_text(size = 12))
+  
   names_table <- ggtexttable(test_df %>% select(index = ix, Bio.region = bioreg.fig) %>% distinct(), rows = NULL)
   
-  cowplot::plot_grid(barplot+names_table+plot_layout(ncol = 2))
+  list(cowplot::plot_grid(es.barplot+names_table+plot_layout(ncol = 2)), 
+       cowplot::plot_grid(pct.overlap.barplot+names_table+plot_layout(ncol = 2)))
 }
 
 es_score_list %>% 
   map(make_barplot) %>%
+  flatten() %>% 
   marrangeGrob(nrow = 1, ncol = 1) %>%
   ggsave(filename = str_glue("{OUTPUTDIR}/enrichment_barplots.pdf"), width = 15, height = 11.29)
   
@@ -336,8 +356,6 @@ print("Please check the 'result' directory")
 # zz3.1 <- zz2[[2]]  %>% pivot_wider(names_from = c("fg.name"), values_from = c("fg.pct.overlap")) %>% 
 #   pivot_wider(names_from = c("bg.name"), values_from = c("bg.pct.overlap"))
 # zz4 <- left_join(zz3, zz3.1, by = c("category", "bioreg"))
-
-
 
 
 
