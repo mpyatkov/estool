@@ -205,6 +205,18 @@ es_score_list <- es_scores %>%
   group_by(category, bg.name) %>% 
   group_split()
 
+## create vector of non consecutive numbers to make neghbour colors on
+## plot different (works only for then 3 colors)
+generate_non_consecutive_vector <- function(n, min_val, max_val) {
+  if (max_val - min_val + 1 < n) {
+    stop("Range is too small for the given n without consecutive numbers.")
+  }
+  repeat {
+    vec <- sample(min_val:max_val, n)
+    if (all(abs(diff(vec)) != 1)) return(vec)
+  }
+}
+
 make_barplot <- function(df){
 
   order_df <- unique(df$bioreg.fig) %>% mixedsort() %>% tibble(bioreg.fig = .) %>% mutate(ix = row_number())
@@ -229,8 +241,16 @@ make_barplot <- function(df){
   
   ## colors
   num_colors <- length(unique(test_df$fg.name.fig))
-  brewer_colors <- brewer.pal(n = max(3, num_colors), name = "Set2")[1:num_colors]
-
+  #brewer_colors <- brewer.pal(n = max(3, num_colors), name = "Set2")[1:num_colors]
+  
+  ## get random colors order if we have a lot of colors
+  brewer_colors <- if (num_colors > 6) {
+    colors_order <- generate_non_consecutive_vector(num_colors, 1, num_colors)
+    colorRampPalette(brewer.pal(6,"Set2"))(num_colors)[colors_order]
+  } else {
+    brewer.pal(n = max(3, num_colors), name = "Set2")[1:num_colors]
+  }
+  
   custom_colors <- c("gray", brewer_colors)
   names(custom_colors) <- c("Enrichment score = Inf", unique(test_df$fg.name.fig))
   
