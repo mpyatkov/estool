@@ -292,6 +292,9 @@ options(scipen=0)
 zz1 <- es_scores %>% 
   mutate(fg.pct.overlap = round(100.*fg.overlap/fg.total,2),
          bg.pct.overlap = round(100.*bg.overlap/bg.total,2),
+         fg_to_bio.pct.overlap = round(100.*fg.overlap/bioreg.total,2),
+         bg_to_bio.pct.overlap = round(100.*bg.overlap/bioreg.total,2),
+         
         #p.value = format(p.value, digits = 3, scientific = T, trim = T),
         p.value = formattable::comma(p.value, format = "e", width = 2, digits = 2), 
         #ES = ifelse(is.infinite(ES), 1e300, round(ES,2))
@@ -311,7 +314,9 @@ zz1 <- es_scores %>%
          Foreground_overlap_sites = fg.overlap,
          Background_overlap_sites = bg.overlap,
          Foreground_overlap_sites_percent = fg.pct.overlap, 
-         Background_overlap_sites_percent = bg.pct.overlap) 
+         Background_overlap_sites_percent = bg.pct.overlap,
+         Foreground_overlap_to_Bio.region_total_percent = fg_to_bio.pct.overlap,
+         Background_overlap_to_Bio.region_total_percent = bg_to_bio.pct.overlap) 
 
 openxlsx2::write_xlsx(zz1, file = str_glue("{OUTPUTDIR}/overlap_summary.xlsx"), col_names = TRUE)
 print("Please check the 'result' directory")
