@@ -176,7 +176,7 @@ system.time(
     ## SIDE EFFECT: write down all overlaps to individual files for each category
     if (NEED_OUTPUT_BOOL){
       ## aggregate all dump tables from one category to one
-      agg_dump <- map_dfr(tmp, \(t){t$dump})
+      agg_dump <- map_dfr(tmp, \(t){t$dump}) %>% distinct_all()
       if (nrow(agg_dump) > 990000) {
         print(str_glue("Too many rows for category table '{category}'. Skipping creating overlap files for this category"))
       } else {
